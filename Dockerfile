@@ -9,4 +9,4 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
 EXPOSE 9009
-ENTRYPOINT ["sh", "-c", "java -jar app.jar --server.port=${PORT:-9009} --spring.datasource.url=${SPRING_DATASOURCE_URL} --spring.datasource.username=${SPRING_DATASOURCE_USERNAME} --spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}"]
+ENTRYPOINT ["sh", "-c", "java -jar app.jar --server.port=${PORT:-9009}"]
