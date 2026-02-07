@@ -24,6 +24,11 @@ public class WebsiteController {
     @Autowired
     private WebsiteRepository websiteRepository;
 
+    @GetMapping("/")
+    public String home() {
+        return "Welcome to the Fullstack Backend API!";
+    }
+
     @PostMapping("/website")
     public WebsiteDto createWebsite(@RequestBody WebsiteDto newWebsiteDto) {
         System.out.println("test wen name");
