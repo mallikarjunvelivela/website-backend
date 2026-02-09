@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.demo.fullstack_backend.dto.WebsiteDto;
 import com.demo.fullstack_backend.model.Website;
@@ -31,7 +33,6 @@ public class WebsiteController {
 
     @PostMapping("/website")
     public WebsiteDto createWebsite(@RequestBody WebsiteDto newWebsiteDto) {
-        System.out.println("test wen name");
         Website website = new Website();
         BeanUtils.copyProperties(newWebsiteDto, website);
         website.setCreatedAt(LocalDateTime.now());
@@ -54,7 +55,7 @@ public class WebsiteController {
     @GetMapping("/website/{id}")
     public WebsiteDto getWebsiteById(@PathVariable Long id) {
         Website website = websiteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Website not found with id: " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Website not found with id: " + id));
         WebsiteDto websiteDto = new WebsiteDto();
         BeanUtils.copyProperties(website, websiteDto);
         return websiteDto;
@@ -63,7 +64,7 @@ public class WebsiteController {
     @PutMapping("/website/{id}")
     public WebsiteDto updateWebsite(@RequestBody WebsiteDto newWebsiteDto, @PathVariable Long id) {
         Website website = websiteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Website not found with id: " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Website not found with id: " + id));
 
         website.setName(newWebsiteDto.getName());
         website.setLogo(newWebsiteDto.getLogo());
@@ -81,7 +82,7 @@ public class WebsiteController {
     @DeleteMapping("/website/{id}")
     public String deleteWebsite(@PathVariable Long id) {
         if (!websiteRepository.existsById(id)) {
-            throw new RuntimeException("Website not found with id: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Website not found with id: " + id);
         }
         websiteRepository.deleteById(id);
         return "Website with id " + id + " has been deleted successfully.";
