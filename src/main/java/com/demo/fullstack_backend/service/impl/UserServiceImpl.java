@@ -4,11 +4,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
@@ -16,17 +14,10 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.demo.fullstack_backend.dto.UserDto;
@@ -52,15 +43,6 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private JwtTokenProvider tokenProvider;
-
-    @Value("${github.token}")
-    private String githubToken;
-
-    @Value("${github.username}")
-    private String githubUsername;
-
-    @Value("${github.repo}")
-    private String githubRepo;
 
     @Override
     public UserDto saveUser(UserDto userDto) {
@@ -227,35 +209,26 @@ public class UserServiceImpl implements UserService {
         }
 
         try {
+            // Define the directory where images will be stored
+            String uploadDir = System.getProperty("user.dir") + "/uploads/user-images/";
+            Path uploadPath = Paths.get(uploadDir);
+
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
             String originalFilename = file.getOriginalFilename();
             String fileExtension = originalFilename != null && originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
             String fileName = id + "_" + UUID.randomUUID().toString() + fileExtension;
 
-            String githubUrl = "https://api.github.com/repos/" + githubUsername + "/" + githubRepo + "/contents/user-images/" + fileName;
+            Path filePath = uploadPath.resolve(fileName);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bearer " + githubToken);
-            headers.set("Accept", "application/vnd.github+json");
-
-            Map<String, Object> body = new HashMap<>();
-            body.put("message", "Upload user image " + fileName);
-            body.put("content", Base64.getEncoder().encodeToString(file.getBytes()));
-
-            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-            RestTemplate restTemplate = new RestTemplate();
-            ResponseEntity<Map> response = restTemplate.exchange(githubUrl, HttpMethod.PUT, requestEntity, Map.class);
-
-            Map<String, Object> content = (Map<String, Object>) response.getBody().get("content");
-            String downloadUrl = (String) content.get("download_url");
-
-            user.setImage(downloadUrl);
+            user.setImage(fileName);
             User updatedUser = userRepository.save(user);
             UserDto userDto = new UserDto();
             BeanUtils.copyProperties(updatedUser, userDto);
             return userDto;
-        } catch (HttpClientErrorException e) {
-            e.printStackTrace();
-            throw new RuntimeException("GitHub API Error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Could not store the file. Error: " + e.getMessage());
@@ -272,28 +245,13 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("User has no image assigned.");
         }
 
-        try {
-            if (imageName.startsWith("http")) {
-                RestTemplate restTemplate = new RestTemplate();
-                if (imageName.contains("github") && githubToken != null && !githubToken.isEmpty()) {
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.set("Authorization", "Bearer " + githubToken);
-                    HttpEntity<String> entity = new HttpEntity<>(headers);
-                    ResponseEntity<byte[]> response = restTemplate.exchange(imageName, HttpMethod.GET, entity, byte[].class);
-                    return response.getBody();
-                }
-                return restTemplate.getForObject(imageName, byte[].class);
-            }
+        String uploadDir = System.getProperty("user.dir") + "/uploads/user-images/";
+        Path path = Paths.get(uploadDir + imageName);
 
-            // Fallback for local images
-            String uploadDir = System.getProperty("user.dir") + "/uploads/user-images/";
-            Path path = Paths.get(uploadDir + imageName);
+        try {
             return Files.readAllBytes(path);
         } catch (IOException e) {
             throw new RuntimeException("Could not read the file. Error: " + e.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Could not fetch image. Error: " + e.getMessage());
         }
     }
 
