@@ -84,8 +84,8 @@ public class UserController {
     }
 
     @PostMapping("/user")
-    UserDto saveUser(@RequestBody UserDto newUser){
-        return userService.saveUser(newUser);
+    public ResponseEntity<UserDto> saveUser(@RequestBody UserDto newUser){
+        return ResponseEntity.ok(userService.saveUser(newUser));
     }
 
     @DeleteMapping("/user/{id}")
